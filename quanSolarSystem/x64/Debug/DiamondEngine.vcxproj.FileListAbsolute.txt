@@ -1,0 +1,9 @@
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Debug\sfml-audio-d-2.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Debug\sfml-system-d-2.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Debug\OpenAL32.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Debug\vorbisenc.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Debug\vorbis.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Debug\ogg.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Debug\vorbisfile.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Debug\FLAC.dll
+Z:\project449\solarSystem\quanSolarSystemProj\quanSolarSystem\x64\Debug\DiamondE.34170842.Up2Date

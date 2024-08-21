@@ -1,0 +1,7 @@
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Release\freetype.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Release\zlib1.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Release\bz2.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Release\libpng16.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Release\brotlidec.dll
+Z:\project449\solarSystem\quanSolarSystemProj\x64\Release\brotlicommon.dll
+Z:\project449\solarSystem\quanSolarSystemProj\quanSolarSystem\x64\Release\DiamondE.34170842.Up2Date

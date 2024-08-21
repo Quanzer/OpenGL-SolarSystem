@@ -4,16 +4,19 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-
+#include <SFML/Audio.hpp>
 #include <stb_image.h>
 
 #include <ft2build.h>
 #include FT_FREETYPE_H   
-
+#include"VAO.h"
+#include"VBO.h"
+#include"EBO.h"
 #include "Shader.h"
 #include "Sphere.h"
 #include "Camera.h"
-
+#include "Mesh3D.h"
+#include "Object3D.h"
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -27,7 +30,91 @@
 
 #define TAU (M_PI * 2.0)
 
+/**
+ * @brief Defines a collection of objects that should be rendered with a specific shader program.
+ */
+struct Scene {
+	ShaderProgram defaultShader;
+	std::vector<Object3D> objects;
+	
+};
 
+/**
+ * @brief Constructs a shader program that renders textured meshes in the Phong reflection model.
+ * The shaders used here are incomplete; see their source codes.
+ * @return
+ */
+ShaderProgram phongLighting() {
+	ShaderProgram program;
+	try {
+		program.load("shaders/light_perspective.vert", "shaders/lighting.frag");
+	}
+	catch (std::runtime_error& e) {
+		std::cout << "ERROR: " << e.what() << std::endl;
+		exit(1);
+	}
+	return program;
+}
+
+/**
+ * @brief Constructs a shader program that renders textured meshes without lighting.
+ */
+ShaderProgram textureMapping() {
+	ShaderProgram program;
+	try {
+		program.load("shaders/texture_perspective.vert", "shaders/texturing.frag");
+	}
+	catch (std::runtime_error& e) {
+		std::cout << "ERROR: " << e.what() << std::endl;
+		exit(1);
+	}
+	return program;
+}
+
+/**
+ * @brief Loads an image from the given path into an OpenGL texture.
+ */
+Texture loadTexture(const std::filesystem::path& path, const std::string& samplerName = "baseTexture") {
+	sf::Image i;
+	i.loadFromFile(path.string());
+	return Texture::loadImage(i, samplerName);
+}
+
+/**
+ * @brief  Demonstrates loading a square, oriented as the "floor", with a manually-specified texture
+ * that does not come from Assimp.
+ * @return
+
+Scene marbleSquare() {
+	Texture textures = {
+		loadTexture("models/tiger/texture/StingrayPBS1_baseColor.jpeg", "baseTexture"),
+	};
+
+	auto mesh = Mesh3D::cube(textures);
+	auto square = Object3D(std::vector<Mesh3D>{mesh});
+	square.grow(glm::vec3(5, 5, 5));
+	square.rotate(glm::vec3(-3.14159 / 4, 0, 0));
+
+	return Scene{
+		textureMapping(),
+		{square}
+	};
+}
+ */
+
+/**
+ * @brief Constructs a scene of the textured Stanford bunny.
+
+Scene bunny() {
+	auto bunny = assimpLoad("models/bunny_textured.obj", true);
+	bunny.grow(glm::vec3(9, 9, 9));
+	bunny.move(glm::vec3(0.2, -1, 0));
+
+	return Scene{
+		phongLighting(),
+		{bunny}
+	};
+}*/
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 void RenderText(Shader &s, std::string text, GLfloat x, GLfloat y, GLfloat scale, glm::vec3 color);
@@ -152,6 +239,7 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 }
 
 int main() {
+
 	GetDesktopResolution(SCREEN_WIDTH, SCREEN_HEIGHT); // get resolution for create window
 	camera.LookAtPos = point;
 
@@ -164,7 +252,7 @@ int main() {
 	/* GLFW INIT */
 
 	/* GLFW WINDOW CREATION */
-	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "LearnOpenGL", glfwGetPrimaryMonitor(), NULL);
+	GLFWwindow* window = glfwCreateWindow(1600, 900, "InteractiveSolarSystem", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -172,6 +260,7 @@ int main() {
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
+
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetKeyCallback(window, key_callback);
@@ -195,7 +284,7 @@ int main() {
 		std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
 
 	FT_Face face;
-	if (FT_New_Face(ft, "fonts/ff.otf", 0, &face))
+	if (FT_New_Face(ft, "models/fonts/Starjedi.ttf", 0, &face))
 		std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;
 
 	// Set size to load glyphs as
@@ -255,10 +344,10 @@ int main() {
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	/* SHADERS */
-	Shader SimpleShader("simpleVS.vs", "simpleFS.fs");
-	Shader SkyboxShader("skybox.vs", "skybox.fs");
-	Shader texShader("simpleVS.vs", "texFS.fs");
-	Shader TextShader("TextShader.vs", "TextShader.fs");
+	Shader SimpleShader("shaders/simpleVS.vert", "shaders/simpleFS.frag");
+	Shader SkyboxShader("shaders/skybox.vert", "shaders/skybox.frag");
+	Shader texShader("shaders/simpleVS.vert", "shaders/texFS.frag");
+	Shader TextShader("shaders/TextShader.vert", "shaders/TextShader.frag");
 	/* SHADERS */
 
 	// PROJECTION FOR TEXT RENDER
@@ -353,6 +442,69 @@ int main() {
 		-1.0f, -1.0f,  1.0f,
 		 1.0f, -1.0f,  1.0f
 	};
+	// Vertices coordinates
+	GLfloat vertices[] =
+	{ //     COORDINATES     /        COLORS          /    TexCoord   /        NORMALS       //
+		-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+		-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+		 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+		 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+
+		-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+		-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+		 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+
+		-0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+		 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+		 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+
+		 0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,	 0.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
+		 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
+		 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.8f, 0.5f,  0.0f, // Right side
+
+		 0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,	 5.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
+		-0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f, 	 0.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
+		 0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,	 2.5f, 5.0f,      0.0f, 0.5f,  0.8f  // Facing side
+	};
+
+	// Indices for vertices order
+	GLuint indices[] =
+	{
+		0, 1, 2, // Bottom side
+		0, 2, 3, // Bottom side
+		4, 6, 5, // Left side
+		7, 9, 8, // Non-facing side
+		10, 12, 11, // Right side
+		13, 15, 14 // Facing side
+	};
+
+	GLfloat lightVertices[] =
+	{ //     COORDINATES     //
+		-0.1f, -0.1f,  0.1f,
+		-0.1f, -0.1f, -0.1f,
+		 0.1f, -0.1f, -0.1f,
+		 0.1f, -0.1f,  0.1f,
+		-0.1f,  0.1f,  0.1f,
+		-0.1f,  0.1f, -0.1f,
+		 0.1f,  0.1f, -0.1f,
+		 0.1f,  0.1f,  0.1f
+	};
+
+	GLuint lightIndices[] =
+	{
+		0, 1, 2,
+		0, 2, 3,
+		0, 4, 7,
+		0, 7, 3,
+		3, 7, 6,
+		3, 6, 2,
+		2, 6, 5,
+		2, 5, 1,
+		1, 5, 4,
+		1, 4, 0,
+		4, 5, 6,
+		4, 6, 7
+	};
 
 	/* SKYBOX GENERATION */
 	unsigned int skyboxVAO, skyboxVBO;
@@ -408,18 +560,18 @@ int main() {
 	/* TEXT RENDERING VAO-VBO*/
 
 	/* LOAD TEXTURES */
-	unsigned int texture_earth = loadTexture("resources/planets/earth2k.jpg");
-	unsigned int t_sun = loadTexture("resources/planets/2k_sun.jpg");
-	unsigned int texture_moon = loadTexture("resources/planets/2k_moon.jpg");
-	unsigned int texture_mercury = loadTexture("resources/planets/2k_mercury.jpg");
-	unsigned int texture_venus = loadTexture("resources/planets/2k_mercury.jpg");
-	unsigned int texture_mars = loadTexture("resources/planets/2k_mars.jpg");
-	unsigned int texture_jupiter = loadTexture("resources/planets/2k_jupiter.jpg");
-	unsigned int texture_saturn = loadTexture("resources/planets/2k_saturn.jpg");
-	unsigned int texture_uranus = loadTexture("resources/planets/2k_uranus.jpg");
-	unsigned int texture_neptune = loadTexture("resources/planets/2k_neptune.jpg");
-	unsigned int texture_saturn_ring = loadTexture("resources/planets/r.jpg");
-	unsigned int texture_earth_clouds = loadTexture("resources/planets/2k_earth_clouds.jpg");
+	unsigned int texture_earth = loadTexture("models/planets/earth2k.jpg");
+	unsigned int t_sun = loadTexture("models/planets/2k_sun.jpg");
+	unsigned int texture_moon = loadTexture("models/planets/2k_moon.jpg");
+	unsigned int texture_mercury = loadTexture("models/planets/2k_mercury.jpg");
+	unsigned int texture_venus = loadTexture("models/planets/2k_venus.jpg");
+	unsigned int texture_mars = loadTexture("models/planets/2k_mars.jpg");
+	unsigned int texture_jupiter = loadTexture("models/planets/2k_jupiter.jpg");
+	unsigned int texture_saturn = loadTexture("models/planets/2k_saturn.jpg");
+	unsigned int texture_uranus = loadTexture("models/planets/2k_uranus.jpg");
+	unsigned int texture_neptune = loadTexture("models/planets/2k_neptune.jpg");
+	unsigned int texture_saturn_ring = loadTexture("models/planets/r.jpg");
+	unsigned int texture_earth_clouds = loadTexture("models/planets/2k_earth_clouds.jpg");
 	/* LOAD TEXTURES */
 
 	/* SPHERE GENERATION */
@@ -437,38 +589,34 @@ int main() {
 
 	std::vector<std::string> faces
 	{
-		"resources/skybox/starfield/starfield_rt.tga",
-		"resources/skybox/starfield/starfield_lf.tga",
-		"resources/skybox/starfield/starfield_up.tga",
-		"resources/skybox/starfield/starfield_dn.tga",
-		"resources/skybox/starfield/starfield_ft.tga",
-		"resources/skybox/starfield/starfield_bk.tga",
+		"models/skybox/blue/bkg1_right.png",
+		"models/skybox/blue/bkg1_left.png",
+		"models/skybox/blue/bkg1_top.png",
+		"models/skybox/blue/bkg1_bot.png",
+		"models/skybox/blue/bkg1_front.png",
+		"models/skybox/blue/bkg1_back.png",
 	};
-	std::vector<std::string> faces_extra
-	{
-		"resources/skybox/blue/bkg1_right.png",
-		"resources/skybox/blue/bkg1_left.png",
-		"resources/skybox/blue/bkg1_top.png",
-		"resources/skybox/blue/bkg1_bot.png",
-		"resources/skybox/blue/bkg1_front.png",
-		"resources/skybox/blue/bkg1_back.png",
-	};
+	
 
 	unsigned int cubemapTexture = loadCubemap(faces);
-	unsigned int cubemapTextureExtra = loadCubemap(faces_extra);
+	
 	GLfloat camX = 10.0f;
 	GLfloat camZ = 10.0f;
 	
-	camera.Position = glm::vec3(0.0f, 250.0f, -450.0f);
+	camera.Position = glm::vec3(0.0f, 1250.0f, 0.0f);
 	camera.Yaw = 90.0f;
-	camera.Pitch = -40.0f;
+	camera.Pitch = -90.0f;
 	camera.ProcessMouseMovement(xoff, yoff);
 	camera.FreeCam = false;
 	onFreeCam = true;
 	glm::mat4 view;
 	glm::vec3 PlanetsPositions[9];
+
+
+	
 	while (!glfwWindowShouldClose(window))
 	{
+		
 		
 		GLfloat currentFrame = (GLfloat)glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
@@ -509,7 +657,59 @@ int main() {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		SimpleShader.Use();
+		glUniform3f(glGetUniformLocation(SimpleShader.ID, "camPos"), camera.Position.x, camera.Position.y, camera.Position.z);
+		VAO VAO1;
+		VAO1.Bind();
+		// Generates Vertex Buffer Object and links it to vertices
+		VBO VBO1(vertices, sizeof(vertices));
+		// Generates Element Buffer Object and links it to indices
+		EBO EBO1(indices, sizeof(indices));
+		// Links VBO attributes such as coordinates and colors to VAO
+		VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 11 * sizeof(float), (void*)0);
+		VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 11 * sizeof(float), (void*)(3 * sizeof(float)));
+		VAO1.LinkAttrib(VBO1, 2, 2, GL_FLOAT, 11 * sizeof(float), (void*)(6 * sizeof(float)));
+		VAO1.LinkAttrib(VBO1, 3, 3, GL_FLOAT, 11 * sizeof(float), (void*)(8 * sizeof(float)));
+		// Unbind all to prevent accidentally modifying them
+		VAO1.Unbind();
+		VBO1.Unbind();
+		EBO1.Unbind();
 
+
+		// Shader for light cube
+		Shader lightShader("shaders/light.vert", "shaders/light.frag");
+		// Generates Vertex Array Object and binds it
+		VAO lightVAO;
+		lightVAO.Bind();
+		// Generates Vertex Buffer Object and links it to vertices
+		VBO lightVBO(lightVertices, sizeof(lightVertices));
+		// Generates Element Buffer Object and links it to indices
+		EBO lightEBO(lightIndices, sizeof(lightIndices));
+		// Links VBO attributes such as coordinates and colors to VAO
+		lightVAO.LinkAttrib(lightVBO, 0, 3, GL_FLOAT, 3 * sizeof(float), (void*)0);
+		// Unbind all to prevent accidentally modifying them
+		lightVAO.Unbind();
+		lightVBO.Unbind();
+		lightEBO.Unbind();
+
+
+
+		glm::vec4 lightColor = glm::vec4(1.0f, 1.0f, 0.9f, 1.0f);
+		glm::vec3 lightPos = glm::vec3(0.5f, 0.5f, 0.5f);
+		glm::mat4 lightModel = glm::mat4(1.0f);
+		lightModel = glm::translate(lightModel, lightPos);
+
+		glm::vec3 pyramidPos = glm::vec3(0.0f, 0.0f, 0.0f);
+		glm::mat4 pyramidModel = glm::mat4(1.0f);
+		pyramidModel = glm::translate(pyramidModel, pyramidPos);
+
+
+		lightShader.Use();
+		glUniformMatrix4fv(glGetUniformLocation(lightShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(lightModel));
+		glUniform4f(glGetUniformLocation(lightShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+		SimpleShader.Use();
+		glUniformMatrix4fv(glGetUniformLocation(SimpleShader.ID, "model"), 1, GL_FALSE, glm::value_ptr(pyramidModel));
+		glUniform4f(glGetUniformLocation(SimpleShader.ID, "lightColor"), lightColor.x, lightColor.y, lightColor.z, lightColor.w);
+		glUniform3f(glGetUniformLocation(SimpleShader.ID, "lightPos"), lightPos.x, lightPos.y, lightPos.z);
 		glm::mat4 model = glm::mat4(1.0f);
 	
 		double viewX;
@@ -765,10 +965,8 @@ int main() {
 		// skybox cube
 		glBindVertexArray(skyboxVAO);
 		glActiveTexture(GL_TEXTURE0);
-		if (SkyBoxExtra)
-			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTextureExtra);
-		else
-			glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+		
+		glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
 		glDrawArrays(GL_TRIANGLES, 0, 36);
 		glBindVertexArray(0);
 		glDepthFunc(GL_LESS);  
@@ -844,20 +1042,21 @@ int main() {
 		case 0:
 			view = camera.GetViewMatrix();
 
-			RenderText(TextShader, "SOLAR SYSTEM ", 25.0f, SCREEN_HEIGHT - 30.0f, 0.50f, glm::vec3(0.7f, 0.7f, 0.11f));
-			RenderText(TextShader, "STARS: 1 (SUN) ", 25.0f, SCREEN_HEIGHT - 55.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-			RenderText(TextShader, "PLANETS: 8 (MAYBE 9) ", 25.0f, SCREEN_HEIGHT - 80.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-			RenderText(TextShader, "SATELLITES: 415 ", 25.0f, SCREEN_HEIGHT - 105.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-			RenderText(TextShader, "COMMETS: 3441 ", 25.0f, SCREEN_HEIGHT - 130.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+			RenderText(TextShader, "Solar System ", SCREEN_WIDTH - 400.0F, 80.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
+			RenderText(TextShader, "Stars: 1  ", SCREEN_WIDTH - 400.0F, 55.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
+
+			RenderText(TextShader, "Planets: 8  ", SCREEN_WIDTH - 400.0F, 30.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
+		
+	
 
 			if (camera.FreeCam)
-				RenderText(TextShader, "FREE CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+				RenderText(TextShader, "free view", SCREEN_WIDTH / 2, 30.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
 			if (onFreeCam)
-				RenderText(TextShader, "STATIC CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+				RenderText(TextShader, "default view", SCREEN_WIDTH / 2, 30.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
 			break;
 		}
 		if (PlanetView > 0)
-			RenderText(TextShader, "PLANET CAM ", SCREEN_WIDTH - 200.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+			RenderText(TextShader, "planet view ", SCREEN_WIDTH/2, 30.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
 		/* PLANET TRACKING + SHOW INFO OF PLANET */
 
 
@@ -887,24 +1086,23 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
 
-	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-		SkyBoxExtra = true;
+	
 
-	if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 	{
 		PlanetView = 0;
 		onFreeCam = false;
 		camera.FreeCam = true;
 	}
 
-	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
 	{
 		PlanetView = 0;
 		onFreeCam = true;
 		camera.FreeCam = false;
-		camera.Position = glm::vec3(0.0f, 250.0f, -450.0f);
+		camera.Position = glm::vec3(0.0f, 1250.0f, 0.0f);
 		camera.Yaw = 90.0f;
-		camera.Pitch = -40.0f;
+		camera.Pitch = -90.0f;
 		camera.GetViewMatrix();
 		camera.ProcessMouseMovement(xoff,yoff);
 	}
@@ -912,7 +1110,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
 	{
 		PlanetView = 1;
-		Info.Name = "MERCURY";
+		Info.Name = "mercury";
 		Info.OrbitSpeed = "47,87";
 		Info.Mass = "0.32868";
 		Info.Gravity = "0.38";
@@ -922,7 +1120,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
 	{
 		PlanetView = 2;
-		Info.Name = "VENUS";
+		Info.Name = "venus";
 		Info.OrbitSpeed = "35,02";
 		Info.Mass = "0.32868";
 		Info.Gravity = "0.90";
@@ -932,7 +1130,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
 	{
 		PlanetView = 3;
-		Info.Name = "EARTH";
+		Info.Name = "earth";
 		Info.OrbitSpeed = "29,76";
 		Info.Mass = "5.97600";
 		Info.Gravity = "1";
@@ -942,7 +1140,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
 	{
 		PlanetView = 4;
-		Info.Name = "MARS";
+		Info.Name = "mars";
 		Info.OrbitSpeed = "24,13";
 		Info.Mass = "0.63345";
 		Info.Gravity = "0.38";
@@ -952,7 +1150,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
 	{
 		PlanetView = 5;
-		Info.Name = "JUPITER";
+		Info.Name = "jupiter";
 		Info.OrbitSpeed = "13,07";
 		Info.Mass = "1876.64328";
 		Info.Gravity = "2.55";
@@ -961,7 +1159,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
 	{
 		PlanetView = 6;
-		Info.Name = "SATURN";
+		Info.Name = "saturn";
 		Info.OrbitSpeed = "9,67";
 		Info.Mass = "561.80376";
 		Info.Gravity = "1.12";
@@ -971,7 +1169,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
 	{
 		PlanetView = 7;
-		Info.Name = "URANUS";
+		Info.Name = "uranus";
 		Info.OrbitSpeed = "6,84";
 		Info.Mass = "86.05440";
 		Info.Gravity = "0.97";
@@ -981,7 +1179,7 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_8) == GLFW_PRESS)
 	{
 		PlanetView = 8;
-		Info.Name = "NEPTUNE";
+		Info.Name = "neptune";
 		Info.OrbitSpeed = "5,48";
 		Info.Mass = "101.59200";
 		Info.Gravity = "1.17";
@@ -1113,8 +1311,8 @@ void RenderText(Shader &s, std::string text, GLfloat x, GLfloat y, GLfloat scale
 
 void ShowInfo(Shader &s)
 {
-	RenderText(s, "Planet: " + Info.Name, 25.0f, SCREEN_HEIGHT - 30.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-	RenderText(s, "Avarage Orbital Speed (km/s): " + Info.OrbitSpeed, 25.0f, SCREEN_HEIGHT - 50.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-	RenderText(s, "Mass (kg * 10^24): " + Info.Mass, 25.0f, SCREEN_HEIGHT - 70.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
-	RenderText(s, "Gravity (g): " + Info.Gravity, 25.0f, SCREEN_HEIGHT - 90.0f, 0.35f, glm::vec3(0.7f, 0.7f, 0.11f));
+	RenderText(s, "planet: " + Info.Name, SCREEN_WIDTH - 400.0F, 30.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
+	RenderText(s, "avarage orbital speed (km/s): " + Info.OrbitSpeed, SCREEN_WIDTH - 400.0F, 50.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
+	RenderText(s, "mass (kg times 10power24): " + Info.Mass, SCREEN_WIDTH - 400.0F, 70.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
+	RenderText(s, "gravity (g): " + Info.Gravity, SCREEN_WIDTH - 400.0F, 90.0f, 0.35f, glm::vec3(1.0f, 1.0f, 1.0f));
 }
